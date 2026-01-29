@@ -7,6 +7,7 @@ import { getLeadByEmailOrPhone } from "@/data/leads/get-lead-by-contact";
 import { getProductById } from "@/data/products/get-products";
 import { db } from "@/db";
 import { email_events, leads } from "@/db/schema";
+import { getEmailLogoAttachment } from "@/lib/email-logo";
 import { sendWhatsappDocument } from "@/lib/zapi-service";
 
 const CAKTO_WEBHOOK_SECRET = process.env.CAKTO_WEBHOOK_SECRET || "";
@@ -201,6 +202,7 @@ export async function POST(req: NextRequest) {
                 productName: dbProduct.name,
               }),
               attachments: [
+                getEmailLogoAttachment(),
                 {
                   filename: fileName,
                   content: fileBuffer.toString("base64"),

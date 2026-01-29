@@ -4,6 +4,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Section,
   Tailwind,
@@ -22,16 +23,16 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
   return (
     <Html lang="pt-BR">
       <Head>
-        <title>Seu produto está pronto!</title>
+        <title>Seu {productName} está pronto!</title>
       </Head>
       <Preview>
-        Olá {customerName}! Seu produto {productName} está pronto para download.
+        Olá {customerName}! Seu {productName} está pronto para download.
       </Preview>
       <Tailwind>
         <Body
           style={{
             fontFamily: "Arial, sans-serif",
-            backgroundColor: "#f4f4f4",
+            backgroundColor: "#272727",
             margin: 0,
             padding: 0,
           }}
@@ -40,7 +41,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
             style={{
               maxWidth: "600px",
               margin: "0 auto",
-              backgroundColor: "#ffffff",
+              backgroundColor: "#272727",
               borderRadius: "8px",
               boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
             }}
@@ -61,19 +62,40 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
                   color: "#ffffff",
                   fontSize: "32px",
                   fontWeight: "bold",
+                  marginBottom: "20px",
                 }}
               >
-                🎉 Produto Entregue!
+                <Img
+                  src={`cid:carslab-logo`}
+                  alt="CarsLab"
+                  width={56}
+                  height={48}
+                  style={{
+                    display: "block",
+                    margin: "0 auto",
+                  }}
+                />
               </Heading>
               <Text
                 style={{
-                  margin: "10px 0 0 0",
+                  margin: "6px 0 0 0",
+                  color: "#ffffff",
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  lineHeight: "1.2",
+                }}
+              >
+                Seu {productName} chegou!
+              </Text>
+              <Text
+                style={{
+                  margin: "6px 0 0 0",
                   color: "#ffffff",
                   fontSize: "16px",
                   opacity: 0.9,
                 }}
               >
-                Obrigado pela sua compra!
+                Agradecemos por escolher nosso conteúdo! 💛
               </Text>
             </Section>
 
@@ -81,13 +103,10 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
             <Section style={{ padding: "40px 60px" }}>
               {/* Welcome message */}
               <div style={{ textAlign: "center", marginBottom: "30px" }}>
-                <div style={{ fontSize: "48px", marginBottom: "20px" }}>
-                  📦
-                </div>
                 <Heading
                   style={{
                     margin: "0 0 10px 0",
-                    color: "#1f2937",
+                    color: "#ffde59",
                     fontSize: "24px",
                     fontWeight: "bold",
                   }}
@@ -99,10 +118,10 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
               {/* Main message */}
               <div
                 style={{
-                  backgroundColor: "#f9fafb",
+                  backgroundColor: "#333333",
                   padding: "30px",
                   borderRadius: "8px",
-                  borderLeft: "4px solid #22c55e",
+                  borderLeft: "4px solid #ffde59",
                   marginBottom: "30px",
                 }}
               >
@@ -114,7 +133,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
                     lineHeight: 1.6,
                   }}
                 >
-                  Agradecemos por escolher nosso produto! 💚
+                  Agradecemos por escolher nosso produto! 💛
                 </Text>
                 <Text
                   style={{
@@ -124,7 +143,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
                     lineHeight: 1.6,
                   }}
                 >
-                  Sua compra do produto <strong>{productName}</strong> foi
+                  Sua compra do produto <strong style={{ color: "#ffde59" }}>{productName}</strong> foi
                   confirmada com sucesso!
                 </Text>
                 <Text
@@ -143,7 +162,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
               {/* Additional info */}
               <div
                 style={{
-                  backgroundColor: "#eff6ff",
+                  backgroundColor: "#333333",
                   padding: "20px",
                   borderRadius: "8px",
                   border: "1px solid #dbeafe",
@@ -152,7 +171,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
                 <Text
                   style={{
                     margin: "0 0 10px 0",
-                    color: "#1e40af",
+                    color: "#ffde59",
                     fontSize: "14px",
                     fontWeight: "bold",
                   }}
@@ -162,7 +181,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
                 <Text
                   style={{
                     margin: 0,
-                    color: "#1e3a8a",
+                    color: "#ffffff",
                     fontSize: "14px",
                     lineHeight: 1.5,
                   }}
@@ -177,7 +196,7 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
             <Section
               style={{
                 padding: "30px 60px",
-                backgroundColor: "#f9fafb",
+                backgroundColor: "#272727",
                 borderRadius: "0 0 8px 8px",
                 borderTop: "1px solid #e5e7eb",
                 textAlign: "center",
@@ -185,18 +204,18 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
             >
               <Text
                 style={{
-                  margin: "0 0 15px 0",
-                  color: "#6b7280",
+                  margin: "0 0 10px 0",
+                  color: "#333333",
                   fontSize: "14px",
                 }}
               >
                 Precisa de ajuda? Entre em contato conosco:
               </Text>
-              <Text style={{ margin: "0 0 20px 0" }}>
+              <Text style={{ margin: "0 0 10px 0" }}>
                 <a
-                  href="https://wa.me/64992834346"
+                  href="https://wa.me/64996775544"
                   style={{
-                    color: "#22c55e",
+                    color: "#ffde59",
                     textDecoration: "none",
                     fontWeight: "bold",
                   }}
@@ -207,16 +226,40 @@ const ProductDeliveryEmail = (props: ProductDeliveryEmailProps) => {
 
               <Text
                 style={{
-                  margin: 0,
-                  color: "#9ca3af",
+                  margin: "6px 0 0 0",
+                  color: "#333333",
                   fontSize: "12px",
                   lineHeight: 1.4,
                 }}
               >
-                © 2025 GPMD. Todos os direitos reservados.
                 <br />
-                Este email foi enviado automaticamente após a confirmação da
-                sua compra.
+                Este email foi enviado automaticamente pois você comprou um de nossos produtos.
+              </Text>
+
+              <Text
+                style={{
+                  margin: "6px 0 0 0",
+                  color: "#333333",
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                }}
+              >
+                <br />
+                Se você não reconhece este email, por favor, entre em contato conosco.
+              </Text>
+
+              <Text
+                style={{
+                  margin: "6px 0 0 0",
+                  color: "#333333",
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                }}
+              >
+                <br />
+                Equipe CarsLab 💛
+                <br />
+                © 2025 CarsLab. Todos os direitos reservados.
               </Text>
             </Section>
           </Container>

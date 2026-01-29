@@ -7,6 +7,7 @@ import ProductDeliveryEmail from "@/components/emails/product-delivery";
 import { getProductById } from "@/data/products/get-products";
 import { db } from "@/db";
 import { email_events, leads } from "@/db/schema";
+import { getEmailLogoAttachment } from "@/lib/email-logo";
 import { sendWhatsappDocument } from "@/lib/zapi-service";
 
 const LEAD_API_TOKEN = process.env.LEAD_API_TOKEN;
@@ -223,6 +224,7 @@ export async function POST(req: NextRequest) {
                   productName: dbProduct.name,
                 }),
                 attachments: [
+                  getEmailLogoAttachment(),
                   {
                     filename: fileName,
                     content: fileBuffer!.toString("base64"),
@@ -251,22 +253,23 @@ export async function POST(req: NextRequest) {
                 phone,
                 fileBuffer!,
                 fileName,
-                ` Olá ${customerName}! 👋 
+                ` Olá ${customerName}! 👋  
                 
-                Seu PDF gratuito *${dbProduct.name}* está pronto!  🎉
+              Seu ${dbProduct.name} está pronto!  🎉
                 
-                A CarsLab agradece por escolher nossos produtos! 🚗
+              A CarsLab agradece por escolher nossos produtos! 🚗
 
-                • Siga nossas redes sociais: @carslab.br
+              • Siga nossas redes sociais: @carslab.br
 
-                • Conheca nosso guia completo sobre Estética automotiva: https://carslab.vercel.app/
+              • Conheca nosso guia completo sobre Estética automotiva: https://carslab.vercel.app/
                 
-                Até mais! 👋
+              Até mais! 👋
 
-                Equipe CarsLab 💛
+              Equipe CarsLab 💛
 
-                📱 Suporte CarsLab: +55 64 9 9999-9999 (WhatsApp)
-                📧 Suporte CarsLab: suportecarslab@gmail.com (Email)
+              📱Fale conosco via WhatsApp: +55 64 9 9999-9999 
+
+              📧 Fale conosco via Email: suportecarslab@gmail.com
                 `,
               );
               await db.insert(email_events).values({
