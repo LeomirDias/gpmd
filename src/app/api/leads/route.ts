@@ -19,6 +19,17 @@ const createLeadSchema = z.object({
   product_id: z.string().uuid("Product ID deve ser um UUID válido").nullish(),
 });
 
+const updateLeadSchema = z
+  .object({
+    user_type: z.string().min(1, "user_type é obrigatório"),
+    email: z.string().email("Email inválido").optional(),
+    phone: z.string().min(1, "Telefone é obrigatório para busca").optional(),
+  })
+  .refine((data) => data.email ?? data.phone, {
+    message: "Informe email ou phone para identificar o lead",
+    path: ["email"],
+  });
+
 export async function POST(req: NextRequest) {
   try {
     // Validação do token
@@ -82,13 +93,72 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Dados inválidos",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 },
       );
     }
 
     console.error("[API][Leads] Erro ao criar lead:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "") || authHeader;
+
+    if (!token || token !== LEAD_API_TOKEN) {
+      return NextResponse.json(
+        { error: "Token de autenticação inválido ou ausente" },
+        { status: 401 },
+      );
+    }
+
+    const body = await req.json();
+    const validatedData = updateLeadSchema.parse(body);
+
+    const conditions = [
+      ...(validatedData.email ? [eq(leads.email, validatedData.email)] : []),
+      ...(validatedData.phone ? [eq(leads.phone, validatedData.phone)] : []),
+    ];
+    const existingLead = await db.query.leads.findFirst({
+      where: or(...conditions),
+    });
+
+    if (!existingLead) {
+      return NextResponse.json(
+        { error: "Lead não encontrado com o email ou telefone informado" },
+        { status: 404 },
+      );
+    }
+
+    const [updatedLead] = await db
+      .update(leads)
+      .set({ user_type: validatedData.user_type })
+      .where(eq(leads.id, existingLead.id))
+      .returning();
+
+    return NextResponse.json(
+      { success: true, data: updatedLead },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: "Dados inválidos",
+          details: error.issues,
+        },
+        { status: 400 },
+      );
+    }
+
+    console.error("[API][Leads] Erro ao atualizar lead:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 },
