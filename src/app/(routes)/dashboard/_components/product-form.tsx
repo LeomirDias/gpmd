@@ -31,7 +31,7 @@ const productSchema = z.object({
   sale_product_id: z.string().min(1, "ID do produto no gateway é obrigatório"),
   name: z.string().min(1, "Nome é obrigatório"),
   type: z.string().min(1, "Tipo é obrigatório"),
-  version: z.coerce.number().int().positive("Versão deve ser um número positivo"),
+  version: z.number().int().positive("Versão deve ser um número positivo"),
   storage_provider: z.string().min(1, "Provedor de armazenamento é obrigatório"),
   provider_path: z.string().min(1, "Caminho do provedor é obrigatório"),
 });
