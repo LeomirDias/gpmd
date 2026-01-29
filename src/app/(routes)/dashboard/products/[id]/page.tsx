@@ -14,7 +14,8 @@ import { getProductById } from "@/data/products/get-products";
 import { EventsSection } from "./_components/events-section";
 import { LeadsSection } from "./_components/leads-section";
 
-
+// Força renderização no servidor a cada requisição (evita cache vazio em produção)
+export const dynamic = "force-dynamic";
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
