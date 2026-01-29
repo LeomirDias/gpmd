@@ -10,6 +10,26 @@ import { email_events, leads } from "@/db/schema";
 import { sendWhatsappDocument } from "@/lib/zapi-service";
 
 const LEAD_API_TOKEN = process.env.LEAD_API_TOKEN;
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+
+function withCorsHeaders(res: NextResponse, req: NextRequest): NextResponse {
+  const origin = req.headers.get("origin");
+  if (origin && allowedOrigins.includes(origin)) {
+    res.headers.set("Access-Control-Allow-Origin", origin);
+  }
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  res.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization",
+  );
+  return res;
+}
+
+export async function OPTIONS(_req: NextRequest) {
+  const res = new NextResponse(null, { status: 200 });
+  return withCorsHeaders(res, _req);
+}
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 function determineContactType(
@@ -63,9 +83,12 @@ export async function POST(req: NextRequest) {
     const token = authHeader?.replace("Bearer ", "") || authHeader;
 
     if (!token || token !== LEAD_API_TOKEN) {
-      return NextResponse.json(
-        { error: "Token de autenticação inválido ou ausente" },
-        { status: 401 },
+      return withCorsHeaders(
+        NextResponse.json(
+          { error: "Token de autenticação inválido ou ausente" },
+          { status: 401 },
+        ),
+        req,
       );
     }
 
@@ -88,12 +111,15 @@ export async function POST(req: NextRequest) {
         : null;
 
     if (existingLead) {
-      return NextResponse.json(
-        {
-          error: "Já existe um lead com este email ou telefone",
-          lead_id: existingLead.id,
-        },
-        { status: 409 },
+      return withCorsHeaders(
+        NextResponse.json(
+          {
+            error: "Já existe um lead com este email ou telefone",
+            lead_id: existingLead.id,
+          },
+          { status: 409 },
+        ),
+        req,
       );
     }
 
@@ -104,12 +130,15 @@ export async function POST(req: NextRequest) {
     // 1) Buscar produto pelo UUID
     const dbProduct = productId ? await getProductById(productId) : null;
     if (productId && !dbProduct) {
-      return NextResponse.json(
-        {
-          error: "Produto não encontrado",
-          detail: `Nenhum produto com id (UUID) igual a "${productId}"`,
-        },
-        { status: 404 },
+      return withCorsHeaders(
+        NextResponse.json(
+          {
+            error: "Produto não encontrado",
+            detail: `Nenhum produto com id (UUID) igual a "${productId}"`,
+          },
+          { status: 404 },
+        ),
+        req,
       );
     }
 
@@ -131,12 +160,15 @@ export async function POST(req: NextRequest) {
         fileBuffer = Buffer.from(await response.arrayBuffer());
       } catch (err) {
         console.error("[API][Leads] Erro ao baixar arquivo do produto:", err);
-        return NextResponse.json(
-          {
-            error: "Erro ao baixar arquivo do produto",
-            detail: err instanceof Error ? err.message : "Erro desconhecido",
-          },
-          { status: 500 },
+        return withCorsHeaders(
+          NextResponse.json(
+            {
+              error: "Erro ao baixar arquivo do produto",
+              detail: err instanceof Error ? err.message : "Erro desconhecido",
+            },
+            { status: 500 },
+          ),
+          req,
         );
       }
     }
@@ -273,30 +305,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: newLead,
-        ...(deliverySent && { delivery_sent: deliverySent }),
-        ...(deliveryErrors.length > 0 && { delivery_errors: deliveryErrors }),
-      },
-      { status: 201 },
+    return withCorsHeaders(
+      NextResponse.json(
+        {
+          success: true,
+          data: newLead,
+          ...(deliverySent && { delivery_sent: deliverySent }),
+          ...(deliveryErrors.length > 0 && { delivery_errors: deliveryErrors }),
+        },
+        { status: 201 },
+      ),
+      req,
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: "Dados inválidos",
-          details: error.issues,
-        },
-        { status: 400 },
+      return withCorsHeaders(
+        NextResponse.json(
+          {
+            error: "Dados inválidos",
+            details: error.issues,
+          },
+          { status: 400 },
+        ),
+        req,
       );
     }
 
     console.error("[API][Leads] Erro ao criar lead:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 },
+    return withCorsHeaders(
+      NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 }),
+      req,
     );
   }
 }
@@ -307,9 +345,12 @@ export async function PATCH(req: NextRequest) {
     const token = authHeader?.replace("Bearer ", "") || authHeader;
 
     if (!token || token !== LEAD_API_TOKEN) {
-      return NextResponse.json(
-        { error: "Token de autenticação inválido ou ausente" },
-        { status: 401 },
+      return withCorsHeaders(
+        NextResponse.json(
+          { error: "Token de autenticação inválido ou ausente" },
+          { status: 401 },
+        ),
+        req,
       );
     }
 
@@ -325,9 +366,12 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (!existingLead) {
-      return NextResponse.json(
-        { error: "Lead não encontrado com o email ou telefone informado" },
-        { status: 404 },
+      return withCorsHeaders(
+        NextResponse.json(
+          { error: "Lead não encontrado com o email ou telefone informado" },
+          { status: 404 },
+        ),
+        req,
       );
     }
 
@@ -337,25 +381,28 @@ export async function PATCH(req: NextRequest) {
       .where(eq(leads.id, existingLead.id))
       .returning();
 
-    return NextResponse.json(
-      { success: true, data: updatedLead },
-      { status: 200 },
+    return withCorsHeaders(
+      NextResponse.json({ success: true, data: updatedLead }, { status: 200 }),
+      req,
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: "Dados inválidos",
-          details: error.issues,
-        },
-        { status: 400 },
+      return withCorsHeaders(
+        NextResponse.json(
+          {
+            error: "Dados inválidos",
+            details: error.issues,
+          },
+          { status: 400 },
+        ),
+        req,
       );
     }
 
     console.error("[API][Leads] Erro ao atualizar lead:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 },
+    return withCorsHeaders(
+      NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 }),
+      req,
     );
   }
 }
