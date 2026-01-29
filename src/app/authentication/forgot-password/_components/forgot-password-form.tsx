@@ -44,7 +44,7 @@ export function ForgotPasswordForm({ }: React.ComponentProps<"div">) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await authClient.forgetPassword({
+      await authClient.requestPasswordReset({
         email: values.email,
         redirectTo: "/authentication/reset-password",
       });

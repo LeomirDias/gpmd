@@ -4,8 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAction } from "next-safe-action/hooks";
-import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -54,39 +52,21 @@ const LoginForm = () => {
     },
   });
 
-  const pendingValuesRef = useRef<z.infer<typeof loginSchema> | null>(null);
-
-  const { execute: executeLogin } = useAction(
-    authClient.signIn.email,
-    {
-      onSuccess: async () => {
-        const values = pendingValuesRef.current;
-        if (!values) return;
-
-        await authClient.signIn.email(
-          {
-            email: values.email,
-            password: values.password,
-          },
-          {
-            onSuccess: () => {
-              router.push("/dashboard");
-            },
-            onError: () => {
-              toast.error("E-mail ou senha inválidos.");
-            },
-          },
-        );
-      },
-      onError: () => {
-        toast.error("Não foi possível validar a assinatura. Tente novamente.");
-      },
-    },
-  );
-
   const handleSubmit = async (values: z.infer<typeof loginSchema>) => {
-    pendingValuesRef.current = values;
-    executeLogin({ email: values.email, password: values.password });
+    await authClient.signIn.email(
+      {
+        email: values.email,
+        password: values.password,
+      },
+      {
+        onSuccess: () => {
+          router.push("/dashboard");
+        },
+        onError: () => {
+          toast.error("E-mail ou senha inválidos.");
+        },
+      },
+    );
   };
 
   const handleGoogleSignUp = async () => {
