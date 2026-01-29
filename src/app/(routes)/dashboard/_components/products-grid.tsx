@@ -3,7 +3,6 @@ import { ProductCard } from "./product-card";
 interface ProductsGridProps {
   products: Array<{
     id: string;
-    sale_product_id: string;
     name: string;
     type: string;
     version: number;

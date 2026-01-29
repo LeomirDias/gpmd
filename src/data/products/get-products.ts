@@ -61,13 +61,3 @@ export const getProductById = async (id: string) => {
 
   return product || null;
 };
-
-export const getProductBySaleProductId = async (saleProductId: string) => {
-  const [product] = await db
-    .select()
-    .from(products)
-    .where(eq(products.sale_product_id, saleProductId))
-    .limit(1);
-
-  return product || null;
-};

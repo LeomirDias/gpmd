@@ -4,7 +4,7 @@ import { Resend } from "resend";
 
 import ProductDeliveryEmail from "@/components/emails/product-delivery";
 import { getLeadByEmailOrPhone } from "@/data/leads/get-lead-by-contact";
-import { getProductBySaleProductId } from "@/data/products/get-products";
+import { getProductById } from "@/data/products/get-products";
 import { db } from "@/db";
 import { email_events, leads } from "@/db/schema";
 import { sendWhatsappDocument } from "@/lib/zapi-service";
@@ -58,16 +58,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!product?.id) {
+    // ID do produto vem da estrutura Cakto: data.product.id
+    const productId = product?.id?.trim() || null;
+    if (!productId) {
       return NextResponse.json(
         { error: "ID do produto ausente" },
         { status: 400 },
       );
     }
 
-    const customerEmail = customer.email || null;
-    const customerPhone = customer.phone || null;
-    const customerName = customer.name || "Cliente";
+    const customerEmail = customer.email?.trim() || null;
+    const customerPhone = customer.phone?.trim() || null;
+    const customerName = customer.name?.trim() || "Cliente";
 
     if (!customerEmail && !customerPhone) {
       return NextResponse.json(
@@ -76,12 +78,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Busca o produto pelo sale_product_id
-    const dbProduct = await getProductBySaleProductId(product.id);
+    // Busca o produto pelo UUID (mesmo padrão da rota de leads)
+    const dbProduct = await getProductById(productId);
     if (!dbProduct) {
-      console.error("[CAKTO][Webhook] Produto não encontrado:", product.id);
+      console.error("[CAKTO][Webhook] Produto não encontrado:", productId);
       return NextResponse.json(
-        { error: "Produto não encontrado" },
+        {
+          error: "Produto não encontrado",
+          detail: `Nenhum produto com id (UUID) igual a "${productId}"`,
+        },
         { status: 404 },
       );
     }
@@ -138,116 +143,137 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Baixa o arquivo do Vercel Blob
+    // Baixa o arquivo do blob (mesmo padrão da rota de leads)
     let fileBuffer: Buffer;
     try {
-      // O provider_path pode ser uma URL completa ou um path relativo
       const blobUrl =
         dbProduct.provider_path.startsWith("http") ||
         dbProduct.provider_path.startsWith("https")
           ? dbProduct.provider_path
           : `https://${dbProduct.provider_path}`;
-
       const response = await fetch(blobUrl);
       if (!response.ok) {
         throw new Error(
           `Erro ao baixar arquivo: ${response.status} ${response.statusText}`,
         );
       }
-      const arrayBuffer = await response.arrayBuffer();
-      fileBuffer = Buffer.from(arrayBuffer);
-    } catch (error) {
-      console.error("[CAKTO][Webhook] Erro ao baixar arquivo do Blob:", error);
+      fileBuffer = Buffer.from(await response.arrayBuffer());
+    } catch (err) {
+      console.error("[CAKTO][Webhook] Erro ao baixar arquivo do produto:", err);
       return NextResponse.json(
-        { error: "Erro ao baixar arquivo do produto" },
+        {
+          error: "Erro ao baixar arquivo do produto",
+          detail: err instanceof Error ? err.message : "Erro desconhecido",
+        },
         { status: 500 },
       );
     }
 
-    // Extrai o nome do arquivo do provider_path
-    const fileName =
+    // Extrai e normaliza o nome do arquivo (decodifica %20 etc.) — mesmo padrão da rota de leads
+    const rawFileName =
       dbProduct.provider_path.split("/").pop() || `${dbProduct.name}.pdf`;
+    let fileName: string;
+    try {
+      fileName = decodeURIComponent(rawFileName);
+    } catch {
+      fileName = rawFileName;
+    }
 
-    // Envia o produto conforme o contact_type
-    const sendPromises: Promise<void>[] = [];
+    // Envia o produto conforme o contact_type (mesmo padrão da rota de leads: sendTasks + Promise.allSettled)
+    const sendTasks: Array<{
+      channel: "email" | "whatsapp";
+      fn: () => Promise<void>;
+    }> = [];
+    const deliveryErrors: { channel: "email" | "whatsapp"; error: string }[] =
+      [];
 
     if (lead.contact_type === "email" || lead.contact_type === "both") {
       if (customerEmail) {
-        sendPromises.push(
-          (async () => {
-            try {
-              await resend.emails.send({
-                from: `${process.env.NAME_FOR_ACCOUNT_MANAGEMENT_SUBMISSIONE} <${process.env.EMAIL_FOR_ACCOUNT_MANAGEMENT_SUBMISSION}>`,
-                to: customerEmail,
-                subject: `Seu produto ${dbProduct.name} está pronto!`,
-                react: ProductDeliveryEmail({
-                  customerName: customerName,
-                  productName: dbProduct.name,
-                }),
-                attachments: [
-                  {
-                    filename: fileName,
-                    content: fileBuffer,
-                  },
-                ],
-              });
-
-              // Registra evento de email
-              await db.insert(email_events).values({
-                type: "email_delivery",
-                category: "sale",
-                to: customerEmail,
-                subject: `Seu produto ${dbProduct.name} está pronto!`,
-                product_id: dbProduct.id,
-                sent_at: new Date(),
-              });
-            } catch (error) {
-              console.error("[CAKTO][Webhook] Erro ao enviar email:", error);
-              throw error;
-            }
-          })(),
-        );
+        sendTasks.push({
+          channel: "email",
+          fn: async () => {
+            await resend.emails.send({
+              from: `${process.env.NAME_FOR_ACCOUNT_MANAGEMENT_SUBMISSIONE} <${process.env.EMAIL_FOR_ACCOUNT_MANAGEMENT_SUBMISSION}>`,
+              to: customerEmail,
+              subject: `Seu produto ${dbProduct.name} está pronto!`,
+              react: ProductDeliveryEmail({
+                customerName,
+                productName: dbProduct.name,
+              }),
+              attachments: [
+                {
+                  filename: fileName,
+                  content: fileBuffer.toString("base64"),
+                },
+              ],
+            });
+            await db.insert(email_events).values({
+              type: "email_delivery",
+              category: "sale",
+              to: customerEmail,
+              subject: `Seu produto ${dbProduct.name} está pronto!`,
+              product_id: dbProduct.id,
+              sent_at: new Date(),
+            });
+          },
+        });
       }
     }
 
     if (lead.contact_type === "phone" || lead.contact_type === "both") {
       if (customerPhone) {
-        sendPromises.push(
-          (async () => {
-            try {
-              await sendWhatsappDocument(
-                customerPhone,
-                fileBuffer,
-                fileName,
-                `🎉 Olá ${customerName}! Seu produto *${dbProduct.name}* está pronto! Obrigado pela compra! 💚`,
-              );
-
-              // Registra evento de WhatsApp (usando email_events com tipo diferente)
-              await db.insert(email_events).values({
-                type: "whatsapp_delivery",
-                category: "sale",
-                to: customerPhone,
-                subject: `Produto ${dbProduct.name} entregue via WhatsApp`,
-                product_id: dbProduct.id,
-                sent_at: new Date(),
-              });
-            } catch (error) {
-              console.error("[CAKTO][Webhook] Erro ao enviar WhatsApp:", error);
-              throw error;
-            }
-          })(),
-        );
+        sendTasks.push({
+          channel: "whatsapp",
+          fn: async () => {
+            await sendWhatsappDocument(
+              customerPhone,
+              fileBuffer,
+              fileName,
+              `🎉 Olá ${customerName}! Seu produto *${dbProduct.name}* está pronto! Obrigado pela compra! 💚`,
+            );
+            await db.insert(email_events).values({
+              type: "whatsapp_delivery",
+              category: "sale",
+              to: customerPhone,
+              subject: `Produto ${dbProduct.name} entregue via WhatsApp`,
+              product_id: dbProduct.id,
+              sent_at: new Date(),
+            });
+          },
+        });
       }
     }
 
-    // Aguarda todos os envios
-    await Promise.allSettled(sendPromises);
+    let deliverySent: "email" | "phone" | "both" | null = null;
+    if (sendTasks.length > 0) {
+      const results = await Promise.allSettled(
+        sendTasks.map((task) => task.fn()),
+      );
+      results.forEach((result, i) => {
+        if (result.status === "rejected") {
+          const channel = sendTasks[i]!.channel;
+          const msg =
+            result.reason?.message ??
+            String(result.reason ?? "Erro desconhecido");
+          console.error(
+            `[CAKTO][Webhook] Erro ao enviar por ${channel}:`,
+            result.reason,
+          );
+          deliveryErrors.push({ channel, error: msg });
+        }
+      });
+      if (deliveryErrors.length < sendTasks.length) {
+        deliverySent = lead.contact_type as "email" | "phone" | "both";
+      }
+    }
 
     return NextResponse.json({
       ok: true,
       leadId: lead.id,
       productId: dbProduct.id,
       sentVia: lead.contact_type,
+      ...(deliverySent && { delivery_sent: deliverySent }),
+      ...(deliveryErrors.length > 0 && { delivery_errors: deliveryErrors }),
     });
   } catch (error) {
     console.error("[CAKTO][Webhook] Erro ao processar webhook:", error);

@@ -10,10 +10,6 @@ import { actionClient } from "@/lib/next-safe-action";
 
 const updateProductSchema = z.object({
   id: z.string().uuid("ID inválido"),
-  sale_product_id: z
-    .string()
-    .min(1, "ID do produto no gateway é obrigatório")
-    .optional(),
   name: z.string().min(1, "Nome é obrigatório").optional(),
   type: z.string().min(1, "Tipo é obrigatório").optional(),
   version: z.number().int().positive().optional(),
@@ -51,8 +47,6 @@ export const updateProduct = actionClient
       updated_at: dayjs().toDate(),
     };
 
-    if (updateData.sale_product_id !== undefined)
-      dataToUpdate.sale_product_id = updateData.sale_product_id;
     if (updateData.name !== undefined) dataToUpdate.name = updateData.name;
     if (updateData.type !== undefined) dataToUpdate.type = updateData.type;
     if (updateData.version !== undefined)

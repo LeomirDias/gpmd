@@ -27,6 +27,23 @@ export async function sendWhatsappMessage(
   }
 }
 
+// Extrai a extensão do arquivo para a URL da Z-API (ex: "pdf", "docx")
+function getFileExtension(fileName: string): string {
+  const match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return match ? match[1] : "pdf";
+}
+
+// Mapeia extensão para MIME type (Z-API espera data URI no document)
+function getMimeType(fileName: string): string {
+  const ext = getFileExtension(fileName);
+  const mime: Record<string, string> = {
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  };
+  return mime[ext] ?? "application/octet-stream";
+}
+
 export async function sendWhatsappDocument(
   phone: string,
   fileBuffer: Buffer,
@@ -36,24 +53,25 @@ export async function sendWhatsappDocument(
   try {
     const formattedPhone = formatPhoneNumber(phone);
 
-    // Converte o buffer para base64
     const base64File = fileBuffer.toString("base64");
+    const mimeType = getMimeType(fileName);
+    const extension = getFileExtension(fileName);
 
-    // Determina o tipo MIME baseado na extensão do arquivo
-    const mimeType = fileName.toLowerCase().endsWith(".pdf")
-      ? "application/pdf"
-      : "application/octet-stream";
+    // Z-API exige: POST /send-document/{extension} e document como data URI
+    const documentDataUri = `data:${mimeType};base64,${base64File}`;
 
-    const response = await zapi.post("/send-document", {
+    const response = await zapi.post(`/send-document/${extension}`, {
       phone: formattedPhone,
-      document: base64File,
+      document: documentDataUri,
       fileName: fileName,
-      mimeType: mimeType,
-      caption: caption || "",
+      ...(caption ? { caption: caption } : {}),
     });
 
     const data = response.data ?? {};
-    return { messageId: data.messageId ?? data.id, id: data.id };
+    return {
+      messageId: data.messageId ?? data.zaapId,
+      id: data.zaapId ?? data.id,
+    };
   } catch (error) {
     console.error("Erro ao enviar documento pelo Z-API:", error);
     throw new Error("Falha ao enviar documento pelo WhatsApp.");

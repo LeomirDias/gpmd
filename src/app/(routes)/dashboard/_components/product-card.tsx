@@ -25,7 +25,6 @@ dayjs.locale("pt-br");
 interface ProductCardProps {
   product: {
     id: string;
-    sale_product_id: string;
     name: string;
     type: string;
     version: number;
@@ -50,10 +49,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              <span className="font-medium">ID Gateway:</span>{" "}
-              {product.sale_product_id}
-            </p>
             <p>
               <span className="font-medium">Criado em:</span>{" "}
               {dayjs(product.created_at).format("DD/MM/YYYY [às] HH:mm")}
@@ -93,7 +88,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       <EditProductDialog
         product={{
           id: product.id,
-          sale_product_id: product.sale_product_id,
           name: product.name,
           type: product.type,
           version: product.version,

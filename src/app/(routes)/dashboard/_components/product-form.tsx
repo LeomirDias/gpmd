@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 
 const productSchema = z.object({
-  sale_product_id: z.string().min(1, "ID do produto no gateway é obrigatório"),
   name: z.string().min(1, "Nome é obrigatório"),
   type: z.string().min(1, "Tipo é obrigatório"),
   version: z.number().int().positive("Versão deve ser um número positivo"),
@@ -41,7 +40,6 @@ type ProductFormValues = z.infer<typeof productSchema>;
 interface ProductFormProps {
   defaultValues?: {
     id: string;
-    sale_product_id: string;
     name: string;
     type: string;
     version: number;
@@ -58,7 +56,6 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
     resolver: zodResolver(productSchema),
     defaultValues: defaultValues
       ? {
-        sale_product_id: defaultValues.sale_product_id,
         name: defaultValues.name,
         type: defaultValues.type,
         version: defaultValues.version,
@@ -66,7 +63,6 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
         provider_path: defaultValues.provider_path,
       }
       : {
-        sale_product_id: "",
         name: "",
         type: "ebook",
         version: 1,
@@ -125,20 +121,6 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="sale_product_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ID do Produto no Gateway</FormLabel>
-              <FormControl>
-                <Input placeholder="Digite o ID do produto no gateway" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={form.control}
           name="name"

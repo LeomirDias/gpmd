@@ -13,7 +13,6 @@ import { ProductForm } from "./product-form";
 interface EditProductDialogProps {
   product: {
     id: string;
-    sale_product_id: string;
     name: string;
     type: string;
     version: number;
