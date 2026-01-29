@@ -15,7 +15,7 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "iGenda",
+  title: "Gerenciador de Produtos e Marketing Digital",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
             <SpeedInsights />
           </NuqsAdapter>
         </ReactQueryProvider>
-        <Toaster position="bottom-center" richColors theme="light" />
+        <Toaster position="top-right" richColors theme="light" />
       </body>
     </html>
   );
