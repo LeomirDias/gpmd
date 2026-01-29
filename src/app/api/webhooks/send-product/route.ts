@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
             await resend.emails.send({
               from: `${process.env.NAME_FOR_ACCOUNT_MANAGEMENT_SUBMISSIONE} <${process.env.EMAIL_FOR_ACCOUNT_MANAGEMENT_SUBMISSION}>`,
               to: customerEmail,
-              subject: `Seu produto ${dbProduct.name} está pronto!`,
+              subject: `O seu ${dbProduct.name} está pronto!`,
               react: ProductDeliveryEmail({
                 customerName,
                 productName: dbProduct.name,
@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
               type: "email_delivery",
               category: "sale",
               to: customerEmail,
-              subject: `Seu produto ${dbProduct.name} está pronto!`,
+              subject: `Produto ${dbProduct.name} entregue por email.`,
               product_id: dbProduct.id,
               sent_at: new Date(),
             });
@@ -229,7 +229,21 @@ export async function POST(req: NextRequest) {
               customerPhone,
               fileBuffer,
               fileName,
-              `🎉 Olá ${customerName}! Seu produto *${dbProduct.name}* está pronto! Obrigado pela compra! 💚`,
+              ` Olá ${customerName}! 👋 
+                
+                Seu PDF gratuito *${dbProduct.name}* está pronto!  🎉
+                
+                A CarsLab agradece por escolher nossos produtos! 🚗
+
+                • Siga nossas redes sociais: @carslab.br
+                
+                Até mais! 👋
+
+                Equipe CarsLab 💛
+
+                📱 Suporte CarsLab: +55 64 9 9999-9999 (WhatsApp)
+                📧 Suporte CarsLab: suportecarslab@gmail.com (Email)
+                `,
             );
             await db.insert(email_events).values({
               type: "whatsapp_delivery",
