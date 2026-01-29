@@ -10,7 +10,7 @@ export default function AuthenticationLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="dark min-h-screen bg-gradient-to-br from-[#347d61] to-[#88b94d]">
+    <div className="dark min-h-screen bg-white">
       {children}
     </div>
   );
