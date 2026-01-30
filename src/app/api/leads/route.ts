@@ -328,21 +328,21 @@ export async function POST(req: NextRequest) {
                   fileName,
                   ` Olá ${customerName}! 👋  
                 
-              Seu ${product.name} está pronto!  🎉
+Seu ${product.name} está pronto!  🎉
                 
-              A CarsLab agradece por escolher nossos produtos! 🚗
+A CarsLab agradece por escolher nossos produtos! 🚗
 
-              • Siga nossas redes sociais: @carslab.br
+• Siga nossas redes sociais: https://www.instagram.com/carslab.br
 
-              • Conheca nosso guia completo sobre Estética automotiva: https://carslab.vercel.app/
+• Conheca nosso guia completo sobre Estética automotiva: https://carslab.vercel.app/
                 
-              Até mais! 👋
+Até mais! 👋
 
-              Equipe CarsLab 💛
+Equipe CarsLab 💛
 
-              📱Fale conosco via WhatsApp: +55 64 9 9999-9999 
+📱Fale conosco via WhatsApp: +55 64 9 9999-9999 
 
-              📧 Fale conosco via Email: suportecarslab@gmail.com
+📧 Fale conosco via Email: suportecarslab@gmail.com
                 `,
                 );
                 await db.insert(events).values({

@@ -206,7 +206,10 @@ export async function POST(req: NextRequest) {
           .filter((p): p is NonNullable<typeof p> => p != null);
 
         if (dbProducts.length === 0) {
-          console.error("[CAKTO][Webhook] Nenhum produto encontrado para entrega:", orderProductIds);
+          console.error(
+            "[CAKTO][Webhook] Nenhum produto encontrado para entrega:",
+            orderProductIds,
+          );
           return;
         }
 
@@ -317,18 +320,19 @@ export async function POST(req: NextRequest) {
                     fileName,
                     ` Olá ${customerName}! 👋 
                 
-                Seu PDF *${product.name}* está pronto!  🎉
+Seu *${product.name}* está pronto!  🎉
                 
-                A CarsLab agradece por escolher nossos produtos! 🚗
+A CarsLab agradece por escolher nossos produtos! 🚗
 
-                • Siga nossas redes sociais: @carslab.br
+• Siga nossas redes sociais: @carslab.br
                 
-                Até mais! 👋
+Até mais! 👋
 
-                Equipe CarsLab 💛
+Equipe CarsLab 💛
 
-                📱 Suporte CarsLab: +55 64 9 9999-9999 (WhatsApp)
-                📧 Suporte CarsLab: suportecarslab@gmail.com (Email)
+📱Fale conosco via WhatsApp: +55 64 9 9999-9999 
+
+📧 Fale conosco via Email: suportecarslab@gmail.com
                 `,
                   );
                   await db.insert(events).values({
