@@ -7,7 +7,7 @@ interface ProductsGridProps {
     type: string;
     version: number;
     created_at: Date;
-    storage_provider: string;
+    external_id: string;
     provider_path: string;
   }>;
 }

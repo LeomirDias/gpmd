@@ -16,7 +16,7 @@ interface EditProductDialogProps {
     name: string;
     type: string;
     version: number;
-    storage_provider: string;
+    external_id: string;
     provider_path: string;
   };
   open: boolean;

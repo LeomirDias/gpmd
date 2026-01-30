@@ -31,7 +31,7 @@ const productSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   type: z.string().min(1, "Tipo é obrigatório"),
   version: z.number().int().positive("Versão deve ser um número positivo"),
-  storage_provider: z.string().min(1, "Provedor de armazenamento é obrigatório"),
+  external_id: z.string().min(1, "ID externo é obrigatório"),
   provider_path: z.string().min(1, "Caminho do provedor é obrigatório"),
 });
 
@@ -43,7 +43,7 @@ interface ProductFormProps {
     name: string;
     type: string;
     version: number;
-    storage_provider: string;
+    external_id: string;
     provider_path: string;
   };
   onSuccess?: () => void;
@@ -59,14 +59,14 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
         name: defaultValues.name,
         type: defaultValues.type,
         version: defaultValues.version,
-        storage_provider: defaultValues.storage_provider,
+        external_id: defaultValues.external_id,
         provider_path: defaultValues.provider_path,
       }
       : {
         name: "",
         type: "ebook",
         version: 1,
-        storage_provider: "",
+        external_id: "",
         provider_path: "",
       },
   });
@@ -180,13 +180,13 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
 
         <FormField
           control={form.control}
-          name="storage_provider"
+          name="external_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Provedor de Armazenamento</FormLabel>
+              <FormLabel>ID Externo</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Digite o provedor de armazenamento"
+                  placeholder="Digite o ID externo"
                   {...field}
                 />
               </FormControl>
@@ -200,9 +200,9 @@ export const ProductForm = ({ defaultValues, onSuccess }: ProductFormProps) => {
           name="provider_path"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Caminho do Provedor</FormLabel>
+              <FormLabel>Caminho do Provedor de Armazenamento</FormLabel>
               <FormControl>
-                <Input placeholder="Digite o caminho do provedor" {...field} />
+                <Input placeholder="Digite o caminho do provedor de armazenamento" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -10,9 +10,7 @@ const createProductSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   type: z.string().min(1, "Tipo é obrigatório").optional(),
   version: z.number().int().positive().optional(),
-  storage_provider: z
-    .string()
-    .min(1, "Provedor de armazenamento é obrigatório"),
+  external_id: z.string().min(1, "ID externo é obrigatório"),
   provider_path: z.string().min(1, "Caminho do provedor é obrigatório"),
 });
 
@@ -23,7 +21,7 @@ export const createProduct = actionClient
       name,
       type = "ebook",
       version = 1,
-      storage_provider,
+      external_id,
       provider_path,
     } = parsedInput;
 
@@ -33,7 +31,7 @@ export const createProduct = actionClient
         name,
         type,
         version,
-        storage_provider,
+        external_id,
         provider_path,
       })
       .returning();

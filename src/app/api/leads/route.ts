@@ -1,12 +1,15 @@
 import { eq, or } from "drizzle-orm";
+
+type OrderProduct = { product_id: string; quantity: number };
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { z } from "zod";
 
 import ProductDeliveryEmail from "@/components/emails/product-delivery";
-import { getProductById } from "@/data/products/get-products";
+import { getProductsByIds } from "@/data/products/get-products";
 import { db } from "@/db";
-import { email_events, leads } from "@/db/schema";
+import { events, leads, ordersTable } from "@/db/schema";
+import { fetchBlobWithRetry } from "@/lib/fetch-blob-with-retry";
 import { getEmailLogoAttachment } from "@/lib/email-logo";
 import { sendWhatsappDocument } from "@/lib/zapi-service";
 
@@ -56,6 +59,10 @@ const createLeadSchema = z
     consent_marketing: z.boolean().default(true),
     conversion_status: z.string().default("not_converted"),
     product_id: z.string().uuid("product_id deve ser um UUID válido").nullish(),
+    product_ids: z
+      .array(z.string().uuid("Cada product_id deve ser um UUID válido"))
+      .optional(),
+    remarketing_status: z.string().default("not_sent_remarketing"),
   })
   .refine(
     (data) => {
@@ -64,6 +71,13 @@ const createLeadSchema = z
       return !!(email || phone);
     },
     { message: "Informe ao menos email ou telefone", path: ["email"] },
+  )
+  .refine(
+    (data) => (data.product_ids?.length ?? 0) > 0 || data.product_id != null,
+    {
+      message: "Informe ao menos um produto (product_id ou product_ids)",
+      path: ["product_id"],
+    },
   );
 
 const updateLeadSchema = z
@@ -126,16 +140,25 @@ export async function POST(req: NextRequest) {
 
     const contactType = determineContactType(email, phone);
 
-    const productId = validatedData.product_id?.trim() || null;
+    // Normaliza lista de produtos (product_ids ou product_id único)
+    const productIds = (
+      validatedData.product_ids?.length
+        ? validatedData.product_ids
+        : validatedData.product_id
+          ? [validatedData.product_id]
+          : []
+    ).filter(Boolean) as string[];
 
-    // 1) Buscar produto pelo UUID
-    const dbProduct = productId ? await getProductById(productId) : null;
-    if (productId && !dbProduct) {
+    // Valida que todos os produtos existem
+    const productsFromDb = await getProductsByIds(productIds);
+    if (productsFromDb.length !== productIds.length) {
+      const foundIds = new Set(productsFromDb.map((p) => p.id));
+      const missing = productIds.filter((id) => !foundIds.has(id));
       return withCorsHeaders(
         NextResponse.json(
           {
-            error: "Produto não encontrado",
-            detail: `Nenhum produto com id (UUID) igual a "${productId}"`,
+            error: "Produto(s) não encontrado(s)",
+            detail: `Nenhum produto com id: ${missing.join(", ")}`,
           },
           { status: 404 },
         ),
@@ -143,38 +166,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Baixar arquivo do blob (antes de criar o lead)
-    let fileBuffer: Buffer | null = null;
-    if (dbProduct) {
-      try {
-        const blobUrl =
-          dbProduct.provider_path.startsWith("http") ||
-          dbProduct.provider_path.startsWith("https")
-            ? dbProduct.provider_path
-            : `https://${dbProduct.provider_path}`;
-        const response = await fetch(blobUrl);
-        if (!response.ok) {
-          throw new Error(
-            `Erro ao baixar arquivo: ${response.status} ${response.statusText}`,
-          );
-        }
-        fileBuffer = Buffer.from(await response.arrayBuffer());
-      } catch (err) {
-        console.error("[API][Leads] Erro ao baixar arquivo do produto:", err);
-        return withCorsHeaders(
-          NextResponse.json(
-            {
-              error: "Erro ao baixar arquivo do produto",
-              detail: err instanceof Error ? err.message : "Erro desconhecido",
-            },
-            { status: 500 },
-          ),
-          req,
-        );
-      }
-    }
-
-    // 3) Criar registro do lead com todos os dados (product_id = UUID interno do produto)
+    // 1) Criar lead com os dados
     const [newLead] = await db
       .insert(leads)
       .values({
@@ -186,25 +178,77 @@ export async function POST(req: NextRequest) {
         user_type: validatedData.user_type,
         consent_marketing: validatedData.consent_marketing,
         conversion_status: validatedData.conversion_status,
-        product_id: dbProduct?.id ?? null,
+        remarketing_status: validatedData.remarketing_status,
+        product_id: productIds[0] ?? null,
       })
       .returning();
 
-    // 4) Enviar produto pelo canal (email e/ou WhatsApp)
+    // 2) Criar order com todos os produtos enviados
+    const orderProducts: OrderProduct[] = productIds.map((id) => ({
+      product_id: id,
+      quantity: 1,
+    }));
+    const [newOrder] = await db
+      .insert(ordersTable)
+      .values({
+        order_id: crypto.randomUUID(),
+        lead_id: newLead.id,
+        order_date: new Date(),
+        order_type: "lead_capture",
+        total_amount: 0,
+        status: "created",
+        products: orderProducts,
+      })
+      .returning();
+
+    // 3) Buscar produtos pelo pedido (todos que foram enviados)
+    const orderProductIds = (newOrder.products as OrderProduct[]).map(
+      (p) => p.product_id,
+    );
+    const dbProducts = await getProductsByIds(orderProductIds);
+
+    // 4) Baixar arquivos do Vercel Blob (um por produto)
+    const productBuffers: {
+      product: (typeof dbProducts)[0];
+      buffer: Buffer;
+    }[] = [];
+    for (const product of dbProducts) {
+      try {
+        const blobUrl =
+          product.provider_path.startsWith("http") ||
+          product.provider_path.startsWith("https")
+            ? product.provider_path
+            : `https://${product.provider_path}`;
+        const arrayBuffer = await fetchBlobWithRetry(blobUrl);
+        const buffer = Buffer.from(arrayBuffer);
+        productBuffers.push({ product, buffer });
+      } catch (err) {
+        console.error(
+          "[API][Leads] Erro ao baixar arquivo do produto:",
+          product.id,
+          err,
+        );
+        return withCorsHeaders(
+          NextResponse.json(
+            {
+              error: "Erro ao baixar arquivo do produto",
+              detail: err instanceof Error ? err.message : "Erro desconhecido",
+              product_id: product.id,
+            },
+            { status: 500 },
+          ),
+          req,
+        );
+      }
+    }
+
+    // 5) Enviar arquivos (email com todos os anexos; WhatsApp um doc por produto)
     let deliverySent: "email" | "phone" | "both" | null = null;
     const deliveryErrors: { channel: "email" | "whatsapp"; error: string }[] =
       [];
+    const customerName = validatedData.name;
 
-    if (dbProduct && fileBuffer && newLead) {
-      const rawFileName =
-        dbProduct.provider_path.split("/").pop() || `${dbProduct.name}.pdf`;
-      let fileName: string;
-      try {
-        fileName = decodeURIComponent(rawFileName);
-      } catch {
-        fileName = rawFileName;
-      }
-      const customerName = validatedData.name;
+    if (productBuffers.length > 0) {
       const sendTasks: Array<{
         channel: "email" | "whatsapp";
         fn: () => Promise<void>;
@@ -215,30 +259,49 @@ export async function POST(req: NextRequest) {
           sendTasks.push({
             channel: "email",
             fn: async () => {
+              const attachments = [
+                getEmailLogoAttachment(),
+                ...productBuffers.map(({ product, buffer }) => {
+                  const rawFileName =
+                    product.provider_path.split("/").pop() ||
+                    `${product.name}.pdf`;
+                  const fileName = (() => {
+                    try {
+                      return decodeURIComponent(rawFileName);
+                    } catch {
+                      return rawFileName;
+                    }
+                  })();
+                  return {
+                    filename: fileName,
+                    content: buffer.toString("base64"),
+                  };
+                }),
+              ];
+              const productNames = dbProducts.map((p) => p.name).join(", ");
               await resend.emails.send({
                 from: `${process.env.NAME_FOR_ACCOUNT_MANAGEMENT_SUBMISSIONE} <${process.env.EMAIL_FOR_ACCOUNT_MANAGEMENT_SUBMISSION}>`,
                 to: email,
-                subject: `O seu ${dbProduct.name} está pronto!`,
+                subject: `Seus produtos estão prontos!`,
                 react: ProductDeliveryEmail({
                   customerName,
-                  productName: dbProduct.name,
+                  productName:
+                    dbProducts.length === 1
+                      ? dbProducts[0]!.name
+                      : productNames,
                 }),
-                attachments: [
-                  getEmailLogoAttachment(),
-                  {
-                    filename: fileName,
-                    content: fileBuffer!.toString("base64"),
-                  },
-                ],
+                attachments,
               });
-              await db.insert(email_events).values({
-                type: "email_delivery",
-                category: "lead_capture",
-                to: email,
-                subject: `Produto ${dbProduct.name} entregue por email.`,
-                product_id: dbProduct.id,
-                sent_at: new Date(),
-              });
+              for (const { product } of productBuffers) {
+                await db.insert(events).values({
+                  type: "email_delivery",
+                  category: "lead_capture",
+                  to: email,
+                  subject: `Produto ${product.name} entregue por email.`,
+                  product_id: product.id,
+                  sent_at: new Date(),
+                });
+              }
             },
           });
         }
@@ -246,16 +309,26 @@ export async function POST(req: NextRequest) {
 
       if (contactType === "phone" || contactType === "both") {
         if (phone) {
-          sendTasks.push({
-            channel: "whatsapp",
-            fn: async () => {
-              await sendWhatsappDocument(
-                phone,
-                fileBuffer!,
-                fileName,
-                ` Olá ${customerName}! 👋  
+          for (const { product, buffer } of productBuffers) {
+            const rawFileName =
+              product.provider_path.split("/").pop() || `${product.name}.pdf`;
+            const fileName = (() => {
+              try {
+                return decodeURIComponent(rawFileName);
+              } catch {
+                return rawFileName;
+              }
+            })();
+            sendTasks.push({
+              channel: "whatsapp",
+              fn: async () => {
+                await sendWhatsappDocument(
+                  phone,
+                  buffer,
+                  fileName,
+                  ` Olá ${customerName}! 👋  
                 
-              Seu ${dbProduct.name} está pronto!  🎉
+              Seu ${product.name} está pronto!  🎉
                 
               A CarsLab agradece por escolher nossos produtos! 🚗
 
@@ -271,17 +344,18 @@ export async function POST(req: NextRequest) {
 
               📧 Fale conosco via Email: suportecarslab@gmail.com
                 `,
-              );
-              await db.insert(email_events).values({
-                type: "whatsapp_delivery",
-                category: "lead_capture",
-                to: phone,
-                subject: `Produto ${dbProduct.name} entregue via WhatsApp`,
-                product_id: dbProduct.id,
-                sent_at: new Date(),
-              });
-            },
-          });
+                );
+                await db.insert(events).values({
+                  type: "whatsapp_delivery",
+                  category: "lead_capture",
+                  to: phone,
+                  subject: `Produto ${product.name} entregue via WhatsApp`,
+                  product_id: product.id,
+                  sent_at: new Date(),
+                });
+              },
+            });
+          }
         }
       }
 
@@ -304,6 +378,14 @@ export async function POST(req: NextRequest) {
         });
         if (deliveryErrors.length < sendTasks.length) {
           deliverySent = contactType;
+        }
+
+        // 6) Se envio for ok, atualizar status do order para delivered
+        if (deliveryErrors.length === 0 && newOrder.id) {
+          await db
+            .update(ordersTable)
+            .set({ status: "delivered" })
+            .where(eq(ordersTable.id, newOrder.id));
         }
       }
     }

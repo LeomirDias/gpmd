@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { products } from "@/db/schema";
@@ -60,4 +60,28 @@ export const getProductById = async (id: string) => {
     .limit(1);
 
   return product || null;
+};
+
+export const getProductsByIds = async (ids: string[]) => {
+  if (ids.length === 0) return [];
+  return db.select().from(products).where(inArray(products.id, ids));
+};
+
+/** Busca produto pelo external_id (ex.: id vindo do evento Cakto) */
+export const getProductByExternalId = async (externalId: string) => {
+  const [product] = await db
+    .select()
+    .from(products)
+    .where(eq(products.external_id, externalId))
+    .limit(1);
+  return product || null;
+};
+
+/** Busca vários produtos pelos external_ids */
+export const getProductsByExternalIds = async (externalIds: string[]) => {
+  if (externalIds.length === 0) return [];
+  return db
+    .select()
+    .from(products)
+    .where(inArray(products.external_id, externalIds));
 };

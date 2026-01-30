@@ -29,7 +29,7 @@ interface ProductCardProps {
     type: string;
     version: number;
     created_at: Date;
-    storage_provider: string;
+    external_id: string;
     provider_path: string;
   };
 }
@@ -54,8 +54,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               {dayjs(product.created_at).format("DD/MM/YYYY [às] HH:mm")}
             </p>
             <p>
-              <span className="font-medium">Provedor:</span>{" "}
-              {product.storage_provider}
+              <span className="font-medium">ID Externo:</span>{" "}
+              {product.external_id}
             </p>
           </div>
         </CardContent>
@@ -91,7 +91,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           name: product.name,
           type: product.type,
           version: product.version,
-          storage_provider: product.storage_provider,
+          external_id: product.external_id,
           provider_path: product.provider_path,
         }}
         open={editDialogOpen}

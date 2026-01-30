@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import {
   boolean,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -74,11 +75,12 @@ export const verificationsTable = pgTable("verifications", {
 });
 
 export const products = pgTable("products", {
+  //Cadastrar via CRUD
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   type: text("type").notNull().default("ebook"),
   version: integer("version").notNull().default(1),
-  storage_provider: text("storage_provider").notNull(),
+  external_id: uuid("external_id").notNull(),
   provider_path: text("provider_path").notNull(),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -101,6 +103,9 @@ export const leads = pgTable("leads", {
   conversion_status: text("conversion_status")
     .notNull()
     .default("not_converted"), //Alterar na venda
+  remarketing_status: text("remarketing_status")
+    .notNull()
+    .default("not_sent_remarketing"),
   product_id: uuid("product_id").references(() => products.id, {
     onDelete: "set null",
   }),
@@ -109,8 +114,24 @@ export const leads = pgTable("leads", {
     .defaultNow(),
 });
 
+export const ordersTable = pgTable("orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  order_id: text("order_id").notNull(),
+  order_date: timestamp("order_date", { withTimezone: true }).notNull(),
+  order_type: text("order_type").notNull().default("sale"),
+  total_amount: integer("total_amount").notNull(),
+  status: text("status").notNull().default("pending"),
+  products: jsonb("products").notNull().default([]),
+  lead_id: uuid("lead_id").references(() => leads.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 //Eventos
-export const email_events = pgTable("email_events", {
+export const events = pgTable("events", {
   id: uuid("id").primaryKey().defaultRandom(),
   type: text("type").notNull().default("email_delivery"),
   category: text("category").notNull().default("sale"), //sale, remarketing, upsell

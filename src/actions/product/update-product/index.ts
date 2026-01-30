@@ -13,10 +13,7 @@ const updateProductSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").optional(),
   type: z.string().min(1, "Tipo é obrigatório").optional(),
   version: z.number().int().positive().optional(),
-  storage_provider: z
-    .string()
-    .min(1, "Provedor de armazenamento é obrigatório")
-    .optional(),
+  external_id: z.string().min(1, "ID externo é obrigatório").optional(),
   provider_path: z
     .string()
     .min(1, "Caminho do provedor é obrigatório")
@@ -51,8 +48,8 @@ export const updateProduct = actionClient
     if (updateData.type !== undefined) dataToUpdate.type = updateData.type;
     if (updateData.version !== undefined)
       dataToUpdate.version = updateData.version;
-    if (updateData.storage_provider !== undefined)
-      dataToUpdate.storage_provider = updateData.storage_provider;
+    if (updateData.external_id !== undefined)
+      dataToUpdate.external_id = updateData.external_id;
     if (updateData.provider_path !== undefined)
       dataToUpdate.provider_path = updateData.provider_path;
 

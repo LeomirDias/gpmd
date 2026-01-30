@@ -72,8 +72,20 @@ export async function sendWhatsappDocument(
       messageId: data.messageId ?? data.zaapId,
       id: data.zaapId ?? data.id,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Erro ao enviar documento pelo Z-API:", error);
-    throw new Error("Falha ao enviar documento pelo WhatsApp.");
+    let detail = "Erro desconhecido";
+    if (error instanceof Error) detail = error.message;
+    if (
+      error &&
+      typeof error === "object" &&
+      "response" in error &&
+      (error as { response?: { data?: unknown } }).response?.data != null
+    ) {
+      const data = (error as { response: { data: unknown } }).response.data;
+      detail =
+        typeof data === "object" ? JSON.stringify(data) : String(data);
+    }
+    throw new Error(`Falha ao enviar documento pelo WhatsApp: ${detail}`);
   }
 }
